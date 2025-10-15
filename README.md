@@ -40,13 +40,13 @@ python src/main.py
 
 ## Output Schema
 
-The application produces a standardized output with the following fields:
+The application produces a standardized output with the following fields (EMAIL is the unique identifier):
 
-- CONTACTID
-- EMAIL
-- FULLNAME
+- EMAIL (validated for correct format)
 - FIRSTNAME
 - LASTNAME
+- FULLNAME
+- COMPANYNAME
 - SMS
 - LANDLINE_NUMBER
 - WHATSAPP
@@ -60,8 +60,17 @@ The application produces a standardized output with the following fields:
 - COUNTRY
 - POSTCODE
 
+## Data Quality Features
+
+- **Email Validation**: Only records with valid email addresses are included
+- **Garbage Filtering**: Automatically removes Excel errors (#VALUE!, #REF!, etc.) and invalid data
+- **Deduplication**: EMAIL serves as the unique identifier - duplicate emails are merged
+- **Data Merging**: When duplicates are found, combines data to create most complete record
+- **Smart Field Mapping**: Automatically detects and maps various column names from different sources
+
 ## Important Notes
 
 - Files in the `ingest/` directory are **never modified** - they remain read-only
 - To reprocess data, delete files in `output/` and restart the application
-- The application intelligently detects field mappings from various input formats
+- Only contacts with valid email addresses are included in the output
+- All data is validated and cleaned during processing
