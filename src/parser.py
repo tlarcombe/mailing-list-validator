@@ -400,6 +400,16 @@ class FileParser:
                 len(record['FULLNAME'].split()) == 1):
                 has_company_name = True
 
+            # Check if any name field matches COMPANYNAME field
+            # If so, it's a company name that was incorrectly placed in person name fields
+            if record.get('COMPANYNAME'):
+                company = record['COMPANYNAME'].strip()
+                if company:
+                    if (record['FIRSTNAME'] == company or
+                        record['LASTNAME'] == company or
+                        record['FULLNAME'] == company):
+                        has_company_name = True
+
             if has_company_name:
                 # Clear all name fields if company name detected
                 record['FIRSTNAME'] = ''
