@@ -251,6 +251,39 @@ class FileParser:
 
         return field_mapping
 
+    def is_likely_company_name(self, text: str) -> bool:
+        """
+        Detect if text is likely a company name rather than a person name.
+
+        Args:
+            text: Text to analyze
+
+        Returns:
+            True if likely a company name, False otherwise
+        """
+        if not text or pd.isna(text):
+            return False
+
+        text_lower = str(text).strip().lower()
+
+        # Common company indicators
+        company_indicators = [
+            'ltd', 'limited', 'llc', 'inc', 'corp', 'corporation',
+            'company', 'co.', 'plc', 'gmbh', 'sa', 'ag', 'nv',
+            'pty', 'group', 'holdings', 'enterprises', 'industries',
+            'solutions', 'services', 'consulting', 'technologies',
+            'systems', 'partners', 'associates', 'venture', 'capital',
+            'investment', 'fund', 'management', 'trust', 'foundation',
+            '&', ' and ', ' the '
+        ]
+
+        # Check for company indicators
+        for indicator in company_indicators:
+            if indicator in text_lower:
+                return True
+
+        return False
+
     def extract_name_parts(self, fullname: str) -> Tuple[str, str]:
         """
         Extract first and last name from full name.
@@ -272,7 +305,8 @@ class FileParser:
         elif len(parts) == 1:
             return parts[0], ''
         else:
-            return parts[0], ' '.join(parts[1:])
+            # First word(s) as first name, last word as last name
+            return ' '.join(parts[:-1]), parts[-1]
 
     def parse_file(self, file_path: Path) -> List[Dict]:
         """
@@ -323,17 +357,45 @@ class FileParser:
                 skipped_invalid_email += 1
                 continue
 
-            # Handle name splitting if we have FULLNAME but not FIRSTNAME/LASTNAME
-            if record['FULLNAME'] and (not record['FIRSTNAME'] or not record['LASTNAME']):
-                firstname, lastname = self.extract_name_parts(record['FULLNAME'])
-                if not record['FIRSTNAME']:
-                    record['FIRSTNAME'] = firstname
-                if not record['LASTNAME']:
-                    record['LASTNAME'] = lastname
+            # Check if any name fields contain company names
+            # If so, clear all name fields
+            has_company_name = (
+                self.is_likely_company_name(record['FIRSTNAME']) or
+                self.is_likely_company_name(record['LASTNAME']) or
+                self.is_likely_company_name(record['FULLNAME'])
+            )
 
-            # Create FULLNAME if we have FIRSTNAME and LASTNAME but not FULLNAME
-            if not record['FULLNAME'] and (record['FIRSTNAME'] or record['LASTNAME']):
-                record['FULLNAME'] = f"{record['FIRSTNAME']} {record['LASTNAME']}".strip()
+            if has_company_name:
+                # Clear all name fields if company name detected
+                record['FIRSTNAME'] = ''
+                record['LASTNAME'] = ''
+                record['FULLNAME'] = ''
+            else:
+                # Process person names
+
+                # Case 1: firstname and lastname both contain the full name (same value)
+                # Split it properly
+                if (record['FIRSTNAME'] and record['LASTNAME'] and
+                    record['FIRSTNAME'].strip() == record['LASTNAME'].strip() and
+                    ' ' in record['FIRSTNAME'].strip()):
+                    # They both contain the fullname, split it
+                    firstname, lastname = self.extract_name_parts(record['FIRSTNAME'])
+                    record['FIRSTNAME'] = firstname
+                    record['LASTNAME'] = lastname
+                    if not record['FULLNAME']:
+                        record['FULLNAME'] = f"{firstname} {lastname}".strip()
+
+                # Case 2: Handle name splitting if we have FULLNAME but not FIRSTNAME/LASTNAME
+                elif record['FULLNAME'] and (not record['FIRSTNAME'] or not record['LASTNAME']):
+                    firstname, lastname = self.extract_name_parts(record['FULLNAME'])
+                    if not record['FIRSTNAME']:
+                        record['FIRSTNAME'] = firstname
+                    if not record['LASTNAME']:
+                        record['LASTNAME'] = lastname
+
+                # Case 3: Create FULLNAME if we have FIRSTNAME and LASTNAME but not FULLNAME
+                elif not record['FULLNAME'] and (record['FIRSTNAME'] or record['LASTNAME']):
+                    record['FULLNAME'] = f"{record['FIRSTNAME']} {record['LASTNAME']}".strip()
 
             records.append(record)
 
