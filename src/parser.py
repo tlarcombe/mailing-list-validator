@@ -274,7 +274,8 @@ class FileParser:
             'solutions', 'services', 'consulting', 'technologies',
             'systems', 'partners', 'associates', 'venture', 'capital',
             'investment', 'fund', 'management', 'trust', 'foundation',
-            '&', ' and ', ' the '
+            '&', ' and ', ' the ', 'equity', 'ventures', 'advisors',
+            'futures', 'factor'
         ]
 
         # Check for company indicators
@@ -282,11 +283,24 @@ class FileParser:
             if indicator in text_lower:
                 return True
 
+        # Additional heuristics for company names
+        # If the text is a single word repeated (like "Covidien Covidien"), likely a company
+        parts = text_lower.split()
+        if len(parts) >= 2 and len(set(parts)) == 1:
+            return True
+
+        # If text is all caps and contains no common person name indicators, likely a company
+        if text.isupper() and len(text) > 2 and not any(word in text_lower for word in ['dr', 'mr', 'ms', 'mrs']):
+            return True
+
         return False
 
     def extract_name_parts(self, fullname: str) -> Tuple[str, str]:
         """
         Extract first and last name from full name.
+        Uses a heuristic approach:
+        - For 2-word names: first word = firstname, second = lastname
+        - For 3+ word names: assume last 1-2 words are lastname (compound surnames)
 
         Args:
             fullname: Full name string
@@ -304,9 +318,23 @@ class FileParser:
             return '', ''
         elif len(parts) == 1:
             return parts[0], ''
+        elif len(parts) == 2:
+            # Simple case: First Last
+            return parts[0], parts[1]
         else:
-            # First word(s) as first name, last word as last name
-            return ' '.join(parts[:-1]), parts[-1]
+            # 3+ parts: Try to detect compound last names
+            # Common patterns: "Ana Paula Medrano Filho" -> "Ana Paula" + "Medrano Filho"
+            # Heuristic: If first two words are common first name patterns, keep them together
+            # Otherwise: take last 2 words as lastname if they look like compound surname
+
+            # For now, use simple heuristic:
+            # - Last 2 words as lastname if total > 3 words
+            # - Otherwise last word only
+            if len(parts) > 3:
+                return ' '.join(parts[:-2]), ' '.join(parts[-2:])
+            else:
+                # 3 words: first 2 as firstname, last as lastname
+                return ' '.join(parts[:-1]), parts[-1]
 
     def parse_file(self, file_path: Path) -> List[Dict]:
         """
@@ -364,6 +392,13 @@ class FileParser:
                 self.is_likely_company_name(record['LASTNAME']) or
                 self.is_likely_company_name(record['FULLNAME'])
             )
+
+            # Additional check: if firstname, lastname, and fullname are all identical single words,
+            # it's likely a data quality issue or company name - clear all name fields
+            if (record['FIRSTNAME'] and record['LASTNAME'] and record['FULLNAME'] and
+                record['FIRSTNAME'] == record['LASTNAME'] == record['FULLNAME'] and
+                len(record['FULLNAME'].split()) == 1):
+                has_company_name = True
 
             if has_company_name:
                 # Clear all name fields if company name detected
