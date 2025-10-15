@@ -46,8 +46,8 @@ class IngestHandler(FileSystemEventHandler):
         Args:
             file_path: Path to the file to process
         """
-        # Only process CSV and Excel files
-        if file_path.suffix.lower() not in ['.csv', '.xlsx', '.xls']:
+        # Only process CSV, Excel, and TXT files
+        if file_path.suffix.lower() not in ['.csv', '.xlsx', '.xls', '.txt']:
             return
 
         # Avoid processing the same file multiple times
@@ -93,7 +93,7 @@ def process_existing_files(ingest_dir: Path, parser: FileParser, processor: Cont
     print("🔍 Scanning for existing files in ingest directory...")
 
     files = []
-    for ext in ['*.csv', '*.xlsx', '*.xls']:
+    for ext in ['*.csv', '*.xlsx', '*.xls', '*.txt']:
         files.extend(ingest_dir.glob(ext))
 
     # Filter out already processed files

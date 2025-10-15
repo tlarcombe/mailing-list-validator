@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Place your contact data files (CSV, XLSX, or XLS) in the `ingest/` directory
+1. Place your contact data files (CSV, XLSX, XLS, or TXT) in the `ingest/` directory
 2. Run the processor:
 ```bash
 python src/main.py
@@ -36,6 +36,7 @@ python src/main.py
 
 - CSV files (`.csv`) - with automatic encoding detection
 - Excel files (`.xlsx`, `.xls`)
+- Text files (`.txt`) - one email address per line
 - Files with various column names and formats are automatically mapped
 
 ## Output Schema

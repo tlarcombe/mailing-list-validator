@@ -104,7 +104,7 @@ class FileParser:
 
     def read_file(self, file_path: Path) -> Optional[pd.DataFrame]:
         """
-        Read a file (CSV or Excel) and return a DataFrame.
+        Read a file (CSV, Excel, or TXT) and return a DataFrame.
         Handles encoding detection and skips header rows.
 
         Args:
@@ -125,6 +125,10 @@ class FileParser:
 
                 # Try to read, detecting the right starting row
                 df = self._read_csv_smart(file_path, encoding)
+            elif file_ext == '.txt':
+                # Read text file (one email per line)
+                encoding = self.detect_encoding(file_path)
+                df = self._read_txt_file(file_path, encoding)
             else:
                 print(f"  ⚠️  Unsupported file type: {file_ext}")
                 return None
@@ -146,6 +150,33 @@ class FileParser:
 
         except Exception as e:
             print(f"  ❌ Error reading file: {e}")
+            return None
+
+    def _read_txt_file(self, file_path: Path, encoding: str) -> Optional[pd.DataFrame]:
+        """
+        Read a text file with one email per line.
+
+        Args:
+            file_path: Path to text file
+            encoding: Detected encoding
+
+        Returns:
+            DataFrame with email column or None
+        """
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                lines = f.readlines()
+
+            # Filter out empty lines and strip whitespace
+            emails = [line.strip() for line in lines if line.strip()]
+
+            # Create DataFrame with EMAIL column
+            df = pd.DataFrame({'EMAIL': emails})
+
+            return df
+
+        except Exception as e:
+            print(f"  ⚠️  Error reading text file: {e}")
             return None
 
     def _read_csv_smart(self, file_path: Path, encoding: str) -> Optional[pd.DataFrame]:

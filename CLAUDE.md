@@ -58,3 +58,4 @@ Place test CSV/text files in `ingest/` directory and observe real-time processin
 rm output/*
 python src/main.py
 ```
+- Always update github after making changes to the code.
