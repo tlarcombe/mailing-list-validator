@@ -21,6 +21,8 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Step 1: Process Contact Files
+
 1. Place your contact data files (CSV, XLSX, XLS, or TXT) in the `ingest/` directory
 2. Run the processor:
 ```bash
@@ -31,6 +33,51 @@ python src/main.py
    - Watch the ingest directory for new files in real-time
    - Show progress as files are processed
 4. Output will be saved to `output/contacts_consolidated.csv`
+
+### Step 2: Validate Email Addresses (Optional)
+
+After processing, you can validate email addresses to remove invalid entries:
+
+#### DNS Validation (Recommended First)
+Checks if domains exist and have MX records:
+```bash
+python src/validate_dns.py output/contacts_consolidated.csv
+```
+
+This will:
+- Verify each email domain exists
+- Confirm domain has MX (mail exchange) records
+- Remove entries with invalid domains
+- Create a backup before modifying the file
+
+#### SMTP Mailbox Validation (Optional)
+Connects to mail servers to verify mailbox existence:
+```bash
+python src/validate_smtp.py output/contacts_consolidated.csv
+```
+
+Options:
+- `--timeout=N` - Set connection timeout in seconds (default: 10)
+- `--no-fallback` - Only accept positively verified emails (more strict)
+
+**Important Notes:**
+- SMTP validation can take significant time for large lists
+- Many mail servers block verification attempts to prevent harvesting
+- False positives/negatives are common with SMTP validation
+- Always run DNS validation first to catch obvious invalid domains
+- Consider professional validation services for critical mailing lists
+
+#### Example Workflow
+```bash
+# Step 1: Process all contact files
+python src/main.py
+
+# Step 2: Validate domains (fast, removes obviously invalid)
+python src/validate_dns.py output/contacts_consolidated.csv
+
+# Step 3 (optional): Validate mailboxes (slow, may have false positives)
+python src/validate_smtp.py output/contacts_consolidated.csv --timeout=5
+```
 
 ## Supported File Formats
 
