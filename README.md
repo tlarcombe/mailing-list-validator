@@ -1,17 +1,37 @@
 # Mailing List Validator
 
-A Python application that collates and deduplicates contact information from multiple CSV and text files.
+A Python application that collates and deduplicates contact information from multiple CSV and text files, with built-in DNS and SMTP email validation.
 
 ## Overview
 
-This tool processes multiple contact data files of varying formats, intelligently maps fields to a standardized schema, and produces a single deduplicated output file.
+This tool processes multiple contact data files of varying formats, intelligently maps fields to a standardized schema, and produces a single deduplicated output file. It includes advanced email validation capabilities to ensure your contact list contains only valid, deliverable email addresses.
 
-## Setup
+## Features
+
+- **Multi-format Support**: Process CSV, Excel (XLSX/XLS), and text files
+- **Intelligent Field Mapping**: Automatically maps various column names to standardized schema
+- **Deduplication**: Merges duplicate contacts based on email address
+- **DNS Validation**: Verifies domain existence and MX records
+- **SMTP Validation**: Checks mailbox existence via SMTP (optional)
+- **Real-time Processing**: Monitors ingest directory for new files
+- **Automatic Backups**: Creates backups before validation operations
+
+## Installation
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/tlarcombe/mailing-list-validator.git
+cd mailing-list-validator
+```
+
+### Setup
 
 1. Create a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Linux/Mac
+# On Windows: venv\Scripts\activate
 ```
 
 2. Install dependencies:
@@ -39,33 +59,54 @@ python src/main.py
 After processing, you can validate email addresses to remove invalid entries:
 
 #### DNS Validation (Recommended First)
-Checks if domains exist and have MX records:
+
+Verifies that email domains exist and have proper MX (mail exchange) records:
+
 ```bash
 python src/validate_dns.py output/contacts_consolidated.csv
 ```
 
-This will:
-- Verify each email domain exists
-- Confirm domain has MX (mail exchange) records
-- Remove entries with invalid domains
-- Create a backup before modifying the file
+**What it does:**
+- ✅ Verifies each email domain exists in DNS
+- ✅ Confirms domain has MX (mail exchange) records
+- ✅ Creates automatic backup before modifying file
+- ❌ Removes entries where domain doesn't exist
+- ❌ Removes entries where domain has no MX records
+
+**Performance:** Processes ~25,000 emails in 1-2 hours
 
 #### SMTP Mailbox Validation (Optional)
-Connects to mail servers to verify mailbox existence:
+
+Connects to mail servers to verify individual mailbox existence:
+
 ```bash
 python src/validate_smtp.py output/contacts_consolidated.csv
 ```
 
-Options:
-- `--timeout=N` - Set connection timeout in seconds (default: 10)
-- `--no-fallback` - Only accept positively verified emails (more strict)
+**Default Behavior (Conservative - Recommended):**
+- ✅ **Keeps emails** when server blocks verification (code 252)
+- ✅ **Keeps emails** when connection fails/times out
+- ✅ **Keeps emails** when server doesn't respond
+- ❌ **Only removes** when server explicitly says "mailbox does not exist" (code 550+)
 
-**Important Notes:**
-- SMTP validation can take significant time for large lists
-- Many mail servers block verification attempts to prevent harvesting
-- False positives/negatives are common with SMTP validation
-- Always run DNS validation first to catch obvious invalid domains
-- Consider professional validation services for critical mailing lists
+**Strict Mode (--no-fallback):**
+```bash
+python src/validate_smtp.py output/contacts_consolidated.csv --no-fallback
+```
+- ✅ **Only keeps** emails that are positively verified (codes 250, 251)
+- ❌ **Removes** emails when verification is blocked or fails
+
+**Options:**
+- `--timeout=N` - Connection timeout in seconds (default: 10)
+- `--no-fallback` - Enable strict mode (only keep verified emails)
+- `--output=FILE` - Save to different file (preserves original)
+
+**Important Considerations:**
+- ⏱️ **Time:** Can take several hours for large lists (much slower than DNS)
+- 🚫 **Blocking:** Many mail servers block verification to prevent email harvesting
+- ⚠️ **Accuracy:** False positives/negatives are common
+- 💡 **Best Practice:** Always run DNS validation first
+- 🎯 **Use Case:** Best for final cleanup of critical mailing lists
 
 #### Example Workflow
 ```bash
